@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TBTS Image | Batch Image Renamer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="script.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <h1>TBTS Image</h1>
+    <span class="count" id="header-count"></span>
+  </div>
+
+  <div class="header-divider"></div>
+
+  <div class="export-controls">
+    <div class="field-inline">
+      <label for="opt-mode">Resize</label>
+      <select id="opt-mode" class="select-input">
+        <option value="scale" selected>Scale to height</option>
+        <option value="exact">Exact width × height</option>
+        <option value="pad">Pad to canvas (letterbox)</option>
+        <option value="none">Keep original size</option>
+      </select>
+    </div>
+    <div class="field-inline" id="dim-fields">
+      <input type="number" id="opt-width" class="num-input" value="1600" min="1" style="display:none;">
+      <span id="dim-x" style="color:var(--text-faint); display:none;">×</span>
+      <input type="number" id="opt-height" class="num-input" value="1600" min="1">
+      <label id="dim-unit-label" style="color:var(--text-faint);">px height</label>
+    </div>
+    <div class="field-inline" id="pad-fields" style="display:none;">
+      <input type="number" id="opt-pad-width" class="num-input" value="800" min="1" title="Canvas width">
+      <span style="color:var(--text-faint);">×</span>
+      <input type="number" id="opt-pad-height" class="num-input" value="800" min="1" title="Canvas height">
+      <label style="color:var(--text-faint);">canvas,</label>
+      <input type="number" id="opt-pad-content-height" class="num-input" value="600" min="1" title="Content height">
+      <label style="color:var(--text-faint);">px content on black</label>
+    </div>
+    <div class="field-inline">
+      <label for="opt-format">Format</label>
+      <select id="opt-format" class="select-input">
+        <option value="jpg">JPG</option>
+        <option value="png">PNG</option>
+        <option value="webp">WebP</option>
+        <option value="keep">Keep original</option>
+      </select>
+    </div>
+    <label class="checkbox-inline">
+      <input type="checkbox" id="opt-prefix" checked>
+      Number filenames
+    </label>
+    <label class="checkbox-inline" title="Adds -renamed, then a tag for the resize mode used (e.g. -scaled, -letterbox), to the ZIP file's name only — not the images inside it">
+      <input type="checkbox" id="opt-status-tags" checked>
+      Tag ZIP name
+    </label>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" multiple>
+  <button class="btn primary" id="btn-export" disabled>Export ZIP</button>
+</header>
+
+<div class="layout">
+  <aside id="sidebar">
+    <div class="sidebar-empty">
+      <div class="mark-big"></div>
+      Select an image to edit its name, position, and tags.
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="empty-state" id="empty-state">
+      <div class="drop-zone" id="drop-zone">
+        <div class="mark-huge"></div>
+        <h2>Drop images here, or click to add</h2>
+        <p>Arrange them into order, tag them, then export<br>renamed, resized copies as a ZIP.</p>
+      </div>
+    </div>
+    <div id="grid-wrap" style="display:none;">
+      <div class="grid-toolbar">
+        <span class="hint" id="grid-hint">Click to select · Shift-click for a range · Cmd/Ctrl-click for multiple · Drag to reorder</span>
+        <button class="add-more-btn" id="btn-add-more">+ Add more images</button>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+</div>
+
+<div class="export-status" id="export-status">
+  <div class="spinner"></div>
+  <span>Exporting <span class="mono" id="export-progress">0 / 0</span></span>
+</div>
+
+<div class="modal-overlay" id="confirm-overlay">
+  <div class="modal-box">
+    <h3>Confirm export settings</h3>
+    <div class="field-group">
+      <label class="field-label">ZIP file name</label>
+      <input type="text" class="text-input" id="confirm-zip-name" spellcheck="false" placeholder="images">
+      <div class="name-preview" id="confirm-zip-preview"></div>
+    </div>
+    <div class="modal-summary" id="confirm-summary"></div>
+    <div class="modal-note">Double-check the height above — it's the setting people most often forget to update before exporting.</div>
+    <div class="modal-actions">
+      <button class="btn" id="confirm-cancel">Cancel</button>
+      <button class="btn primary" id="confirm-go">Export</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
