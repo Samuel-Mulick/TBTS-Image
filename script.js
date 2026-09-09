@@ -661,9 +661,9 @@
 
   function buildExportFilename(rec, posIndex1, total, includePrefix, outExt) {
     const parts = [rec.baseName, ...rec.tags].filter(Boolean);
-    let base = sanitizeFilename(parts.join("_"));
+    let base = sanitizeFilename(parts.join("%"));
     if (includePrefix) {
-      base = String(posIndex1).padStart(padWidthFor(total), "0") + "_" + base;
+      base = String(posIndex1).padStart(padWidthFor(total), "0") + "%" + base;
     }
     return base + "." + outExt;
   }
@@ -796,7 +796,7 @@
         const stem = filename.slice(0, dot),
           ext = filename.slice(dot + 1);
         while (usedNames.has(filename)) {
-          filename = stem + "_" + n + "." + ext;
+          filename = stem + "%" + n + "." + ext;
           n++;
         }
         usedNames.add(filename);
