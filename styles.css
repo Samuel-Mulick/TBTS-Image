@@ -181,7 +181,8 @@ input[type="text"]:focus {
   color: #1a1300;
 }
 .btn.primary:hover {
-  background: #f0a262;
+  background: var(--accent-dim);
+  color: var(--text)
 }
 .btn.primary:disabled {
   background: var(--panel-2);
@@ -650,6 +651,8 @@ main {
   height: 100%;
   object-fit: cover;
   display: block;
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 .pos-badge {
   position: absolute;

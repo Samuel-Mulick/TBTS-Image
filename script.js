@@ -217,6 +217,7 @@
   });
   el.main.addEventListener("drop", (e) => {
     e.preventDefault();
+    if (draggedId) return; // this was a card reorder, not a file drop
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
       addFiles(e.dataTransfer.files);
     }
@@ -343,7 +344,7 @@
 
       card.innerHTML = `
         <div class="card-thumb">
-          <img src="${rec.url}" alt="">
+          <img src="${rec.url}" alt="" draggable="false">
           <div class="pos-badge">${i + 1}</div>
         </div>
         <div class="card-info">
@@ -386,6 +387,7 @@
       });
       card.addEventListener("drop", (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const rect = card.getBoundingClientRect();
         const before = e.clientX - rect.left < rect.width / 2;
         card.classList.remove("drop-before", "drop-after");
