@@ -8,6 +8,7 @@
   let activeId = null;
   let anchorId = null; // for shift-click range selection
   let draggedId = null;
+  let draggedGroupIds = [];
   let uid = 0;
 
   // ---------- quick tag presets (persisted locally in this browser) ----------
@@ -217,7 +218,7 @@
   });
   el.main.addEventListener("drop", (e) => {
     e.preventDefault();
-    if (draggedId) return; // this was a card reorder, not a file drop
+    if (draggedGroupIds.length) return; // this was a card reorder, not a file drop
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
       addFiles(e.dataTransfer.files);
     }
@@ -266,12 +267,13 @@
     order.splice(idx, 0, id);
   }
 
-  function reorderByDrag(draggedId, targetId, before) {
-    if (draggedId === targetId) return;
-    order = order.filter((oid) => oid !== draggedId);
+  function reorderGroupByDrag(groupIds, targetId, before) {
+    const groupSet = new Set(groupIds);
+    if (groupSet.has(targetId)) return;
+    order = order.filter((oid) => !groupSet.has(oid));
     let idx = order.indexOf(targetId);
     if (!before) idx += 1;
-    order.splice(idx, 0, draggedId);
+    order.splice(idx, 0, ...groupIds);
   }
 
   // ---------- tags ----------
@@ -364,19 +366,34 @@
       card.addEventListener("click", (e) => selectImage(id, e));
 
       card.addEventListener("dragstart", (e) => {
+        if (selectedIds.has(id) && selectedIds.size > 1) {
+          draggedGroupIds = order.filter((oid) => selectedIds.has(oid));
+        } else {
+          draggedGroupIds = [id];
+        }
         draggedId = id;
         e.dataTransfer.effectAllowed = "move";
-        setTimeout(() => card.classList.add("dragging"), 0);
+        setTimeout(() => {
+          draggedGroupIds.forEach((gid) => {
+            const groupCard = el.grid.querySelector(`[data-id="${gid}"]`);
+            if (groupCard) groupCard.classList.add("dragging");
+          });
+        }, 0);
       });
       card.addEventListener("dragend", () => {
-        card.classList.remove("dragging");
+        draggedGroupIds.forEach((gid) => {
+          const groupCard = el.grid.querySelector(`[data-id="${gid}"]`);
+          if (groupCard) groupCard.classList.remove("dragging");
+        });
+        draggedGroupIds = [];
+        draggedId = null;
         document
           .querySelectorAll(".drop-before,.drop-after")
           .forEach((c) => c.classList.remove("drop-before", "drop-after"));
       });
       card.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (!draggedId || draggedId === id) return;
+        if (!draggedGroupIds.length || draggedGroupIds.includes(id)) return;
         const rect = card.getBoundingClientRect();
         const before = e.clientX - rect.left < rect.width / 2;
         card.classList.toggle("drop-before", before);
@@ -391,8 +408,9 @@
         const rect = card.getBoundingClientRect();
         const before = e.clientX - rect.left < rect.width / 2;
         card.classList.remove("drop-before", "drop-after");
-        if (draggedId && draggedId !== id) {
-          reorderByDrag(draggedId, id, before);
+        if (draggedGroupIds.length && !draggedGroupIds.includes(id)) {
+          reorderGroupByDrag(draggedGroupIds, id, before);
+          draggedGroupIds = [];
           draggedId = null;
           render();
         }
@@ -661,9 +679,9 @@
 
   function buildExportFilename(rec, posIndex1, total, includePrefix, outExt) {
     const parts = [rec.baseName, ...rec.tags].filter(Boolean);
-    let base = sanitizeFilename(parts.join("_"));
+    let base = sanitizeFilename(parts.join("%"));
     if (includePrefix) {
-      base = String(posIndex1).padStart(padWidthFor(total), "0") + "_" + base;
+      base = String(posIndex1).padStart(padWidthFor(total), "0") + "%" + base;
     }
     return base + "." + outExt;
   }
@@ -796,7 +814,7 @@
         const stem = filename.slice(0, dot),
           ext = filename.slice(dot + 1);
         while (usedNames.has(filename)) {
-          filename = stem + "_" + n + "." + ext;
+          filename = stem + "%" + n + "." + ext;
           n++;
         }
         usedNames.add(filename);
