@@ -9,6 +9,7 @@
   let anchorId = null; // for shift-click range selection
   let draggedId = null;
   let draggedGroupIds = [];
+  let exporting = false; // blocks duplicate/delete while a ZIP is being built
   let uid = 0;
 
   // ---------- quick tag presets (persisted locally in this browser) ----------
@@ -72,6 +73,13 @@
   const el = {
     fileInput: document.getElementById("file-input"),
     btnAddMore: document.getElementById("btn-add-more"),
+    btnDuplicate: document.getElementById("btn-duplicate"),
+    btnDelete: document.getElementById("btn-delete"),
+    deleteOverlay: document.getElementById("delete-overlay"),
+    deleteTitle: document.getElementById("delete-title"),
+    deleteMessage: document.getElementById("delete-message"),
+    deleteCancel: document.getElementById("delete-cancel"),
+    deleteConfirm: document.getElementById("delete-confirm"),
     btnExport: document.getElementById("btn-export"),
     dropZone: document.getElementById("drop-zone"),
     emptyState: document.getElementById("empty-state"),
@@ -276,6 +284,99 @@
     order.splice(idx, 0, ...groupIds);
   }
 
+  // ---------- duplicate / delete ----------
+  function updateToolbarState() {
+    const n = selectedIds.size;
+    const blocked = exporting || n === 0;
+    el.btnDuplicate.disabled = blocked;
+    el.btnDelete.disabled = blocked;
+    el.btnDuplicate.textContent = n > 1 ? `Duplicate (${n})` : "Duplicate";
+    el.btnDelete.textContent = n > 1 ? `Delete (${n})` : "Delete";
+  }
+
+  // Each selected image gets a copy placed right after it. The copies become
+  // the new selection so they can be renamed/tagged straight away.
+  function duplicateSelected() {
+    if (exporting || selectedIds.size === 0) return;
+
+    const newOrder = [];
+    const newIds = [];
+    let newActive = null;
+
+    order.forEach((id) => {
+      newOrder.push(id);
+      if (!selectedIds.has(id)) return;
+
+      const src = images[id];
+      const copyId = "img" + uid++;
+      images[copyId] = {
+        id: copyId,
+        file: src.file,
+        // own object URL, so deleting one image never breaks the other
+        url: URL.createObjectURL(src.file),
+        baseName: src.baseName,
+        ext: src.ext,
+        tags: src.tags.slice(),
+        naturalWidth: src.naturalWidth,
+        naturalHeight: src.naturalHeight,
+      };
+      newOrder.push(copyId);
+      newIds.push(copyId);
+      if (id === activeId) newActive = copyId;
+    });
+
+    order = newOrder;
+    selectedIds = new Set(newIds);
+    activeId = newActive || newIds[newIds.length - 1];
+    anchorId = activeId;
+    render();
+  }
+
+  function deleteSelected() {
+    if (exporting || selectedIds.size === 0) return;
+
+    selectedIds.forEach((id) => {
+      const rec = images[id];
+      if (rec) URL.revokeObjectURL(rec.url);
+      delete images[id];
+    });
+    order = order.filter((id) => !selectedIds.has(id));
+
+    selectedIds = new Set();
+    activeId = null;
+    anchorId = null;
+    render();
+  }
+
+  // One image is removed straight away; several ask first.
+  function requestDelete() {
+    if (exporting || selectedIds.size === 0) return;
+    if (selectedIds.size === 1) {
+      deleteSelected();
+      return;
+    }
+    el.deleteTitle.textContent = `Delete ${selectedIds.size} images?`;
+    el.deleteMessage.textContent =
+      "They will be removed from the pool, along with their names and tags. You can add the original files again at any time.";
+    el.deleteConfirm.textContent = `Delete ${selectedIds.size} images`;
+    el.deleteOverlay.classList.add("visible");
+    el.deleteConfirm.focus();
+  }
+  function closeDeleteConfirm() {
+    el.deleteOverlay.classList.remove("visible");
+  }
+
+  el.btnDuplicate.addEventListener("click", duplicateSelected);
+  el.btnDelete.addEventListener("click", requestDelete);
+  el.deleteCancel.addEventListener("click", closeDeleteConfirm);
+  el.deleteOverlay.addEventListener("click", (e) => {
+    if (e.target === el.deleteOverlay) closeDeleteConfirm();
+  });
+  el.deleteConfirm.addEventListener("click", () => {
+    closeDeleteConfirm();
+    deleteSelected();
+  });
+
   // ---------- tags ----------
   function addTagsToActive(rawInput) {
     const tags = rawInput
@@ -321,10 +422,12 @@
       ? order.length + (order.length === 1 ? " image" : " images")
       : "";
     el.btnExport.disabled = order.length === 0;
+    updateToolbarState();
 
     if (order.length === 0) {
       el.emptyState.style.display = "flex";
       el.gridWrap.style.display = "none";
+      el.grid.innerHTML = ""; // don't leave the last deleted card in the DOM
     } else {
       el.emptyState.style.display = "none";
       el.gridWrap.style.display = "block";
@@ -679,9 +782,9 @@
 
   function buildExportFilename(rec, posIndex1, total, includePrefix, outExt) {
     const parts = [rec.baseName, ...rec.tags].filter(Boolean);
-    let base = sanitizeFilename(parts.join("%"));
+    let base = sanitizeFilename(parts.join("_"));
     if (includePrefix) {
-      base = String(posIndex1).padStart(padWidthFor(total), "0") + "%" + base;
+      base = String(posIndex1).padStart(padWidthFor(total), "0") + "_" + base;
     }
     return base + "." + outExt;
   }
@@ -788,6 +891,8 @@
 
   async function exportAll(zipFileName) {
     if (order.length === 0) return;
+    exporting = true;
+    updateToolbarState();
     el.btnExport.disabled = true;
     el.exportStatus.classList.add("visible");
     el.exportProgress.textContent = `0 / ${order.length}`;
@@ -814,7 +919,7 @@
         const stem = filename.slice(0, dot),
           ext = filename.slice(dot + 1);
         while (usedNames.has(filename)) {
-          filename = stem + "%" + n + "." + ext;
+          filename = stem + "_" + n + "." + ext;
           n++;
         }
         usedNames.add(filename);
@@ -835,6 +940,8 @@
     } catch (err) {
       alert("Export failed: " + err.message);
     } finally {
+      exporting = false;
+      updateToolbarState();
       el.exportStatus.classList.remove("visible");
       el.btnExport.disabled = order.length === 0;
     }
@@ -934,8 +1041,29 @@
   // ---------- keyboard ----------
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (el.confirmOverlay.classList.contains("visible")) closeExportConfirm();
+      if (el.deleteOverlay.classList.contains("visible")) closeDeleteConfirm();
+      else if (el.confirmOverlay.classList.contains("visible"))
+        closeExportConfirm();
       else clearSelection();
+      return;
+    }
+
+    // Delete / Backspace removes the selection, but never while typing in a
+    // field or while a dialog is open.
+    if (e.key === "Delete" || e.key === "Backspace") {
+      const t = e.target;
+      const typing =
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.tagName === "SELECT" ||
+          t.isContentEditable);
+      const dialogOpen =
+        el.deleteOverlay.classList.contains("visible") ||
+        el.confirmOverlay.classList.contains("visible");
+      if (typing || dialogOpen || selectedIds.size === 0) return;
+      e.preventDefault();
+      requestDelete();
     }
   });
 

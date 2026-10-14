@@ -181,8 +181,7 @@ input[type="text"]:focus {
   color: #1a1300;
 }
 .btn.primary:hover {
-  background: var(--accent-dim);
-  color: var(--text)
+  background: #f0a262;
 }
 .btn.primary:disabled {
   background: var(--panel-2);
@@ -193,6 +192,15 @@ input[type="text"]:focus {
 .btn:disabled {
   cursor: default;
   opacity: 0.5;
+}
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #1a0a06;
+}
+.btn.danger:hover {
+  background: #e47760;
+  border-color: #e47760;
 }
 
 #file-input {
@@ -581,9 +589,17 @@ main {
 
 .grid-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 10px 14px;
   margin-bottom: 18px;
+}
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .grid-toolbar .hint {
   font-size: 12px;
@@ -601,6 +617,18 @@ main {
 .add-more-btn:hover {
   color: var(--text);
   border-color: #4d4f53;
+}
+.add-more-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.add-more-btn:disabled:hover {
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.add-more-btn.danger:not(:disabled):hover {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .grid {

@@ -87,7 +87,11 @@
     <div id="grid-wrap" style="display:none;">
       <div class="grid-toolbar">
         <span class="hint" id="grid-hint">Click to select · Shift-click for a range · Cmd/Ctrl-click for multiple · Drag to reorder</span>
-        <button class="add-more-btn" id="btn-add-more">+ Add more images</button>
+        <div class="toolbar-actions">
+          <button class="add-more-btn" id="btn-duplicate" disabled title="Duplicate the selected image(s)">Duplicate</button>
+          <button class="add-more-btn danger" id="btn-delete" disabled title="Remove the selected image(s) from the pool (Delete key)">Delete</button>
+          <button class="add-more-btn" id="btn-add-more">+ Add more images</button>
+        </div>
       </div>
       <div class="grid" id="grid"></div>
     </div>
@@ -112,6 +116,17 @@
     <div class="modal-actions">
       <button class="btn" id="confirm-cancel">Cancel</button>
       <button class="btn primary" id="confirm-go">Export</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="delete-overlay">
+  <div class="modal-box">
+    <h3 id="delete-title">Delete images?</h3>
+    <div class="modal-note" id="delete-message"></div>
+    <div class="modal-actions">
+      <button class="btn" id="delete-cancel">Cancel</button>
+      <button class="btn danger" id="delete-confirm">Delete</button>
     </div>
   </div>
 </div>
